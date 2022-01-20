@@ -19,4 +19,4 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 Route::post('user', [User2Controller::class, 'store']);
-Route::patch('user', [User2Controller::class, 'update']);
+Route::patch('user/{id}', [User2Controller::class, 'update']);

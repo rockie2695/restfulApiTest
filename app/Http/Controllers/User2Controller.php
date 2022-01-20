@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\User2;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Hash;
+use Throwable;
 
 class User2Controller extends Controller
 {
@@ -51,11 +53,11 @@ class User2Controller extends Controller
             $validatedData = $request->validate($rules);
             $validatedData['password'] = Hash::make($validatedData['password']);
             $user = User2::create($validatedData);
-            if (isset($user)) {
-                return response()->json(['status' => 'ok', 'user' => $user])->setEncodingOptions(JSON_UNESCAPED_UNICODE);
-            } else {
-                return response()->json(['err' => 'add fail']);
-            }
+            //if (isset($user)) {
+            return response($user, 201); //->json(['status' => 'ok', 'user' => ])->setEncodingOptions(JSON_UNESCAPED_UNICODE);
+            //} else {
+            //    return response(null, 500); //->json(['err' => 'add fail'])
+            //}
         } catch (ValidationException $exception) {
             // 取得 laravel Validator 實例
             $validatorInstance = $exception->validator;
@@ -63,7 +65,9 @@ class User2Controller extends Controller
             $errorMessageData = $validatorInstance->getMessageBag();
             // 取得驗證錯誤訊息
             $errorMessages = $errorMessageData->getMessages();
-            return response()->json($errorMessages);
+            return response($errorMessages, 400);
+        } catch (Throwable $e) {
+            return response($e->getMessage(), 500);
         }
     }
 
@@ -97,23 +101,34 @@ class User2Controller extends Controller
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, User2 $user2)
-    {
-        //
-        /*
-         try {
-            $post = Post::findOrFail($id);
-            $post->title = $request->title;
-            $post->content = $request->content;
-            $post->save();
+    { //->ignore($user2->id, 'email')
+        try {
+            $rules = [
+                'email' => ['email', 'unique:user2s,email,' . $request['id']], //unique:table,column,ignore_id
+                'password' => ['confirmed', 'string', 'min:8', 'regex:/[a-z]/', 'regex:/[A-Z]/', 'regex:/[0-9]/', 'regex:/[@$!%*#?&]/'],
+                'firstName' => ['string'],
+                'lastName' => ['string'],
+                'birthday' => ['date_format:Y-m-d', 'before:today'],
+                'gender' => ['string', 'size:1'],
+                'mobile' => ['string', 'size:8']
+            ];
+            $validatedData = $request->validate($rules);
+            if (isset($validatedData['password'])) {
+                $validatedData['password'] = Hash::make($validatedData['password']);
+            }
+            $user2 = $user2->findOrFail($request['id'])->whereId($request['id'])->update($validatedData); //return 0 or affect row
+            return response(['attect row' => $user2], 200);
+        } catch (ValidationException $exception) {
+            // 取得 laravel Validator 實例
+            $validatorInstance = $exception->validator;
+            // 取得錯誤資料
+            $errorMessageData = $validatorInstance->getMessageBag();
+            // 取得驗證錯誤訊息
+            $errorMessages = $errorMessageData->getMessages();
+            return response($errorMessages, 400);
         } catch (Throwable $e) {
-            //更新失敗
-            $data = ['post' => $post];
-            return $this->makeJson(0, null, '更新文章失敗');
+            return response($e->getMessage(), 500);
         }
-
-        $data = ['post' => $post];
-        return $this->makeJson(1, $data, '更新文章成功');
-         */
     }
 
     /**
